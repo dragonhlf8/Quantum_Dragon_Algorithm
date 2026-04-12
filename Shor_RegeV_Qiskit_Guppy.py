@@ -1323,9 +1323,6 @@ def main():
     # =========================================================================
     # QISKIT PATH (token/service/DD/ZNE unchanged from v150)
     # =========================================================================
-    # =========================================================================
-    # QISKIT PATH (token/service/DD/ZNE unchanged from v150)
-    # =========================================================================
     if BACKEND_MODE == "QISKIT":
         print("\n=== IBM Quantum Real Hardware Setup ===")
         api_token = input("IBM Quantum API token (press Enter if already saved): ").strip()
@@ -1368,41 +1365,53 @@ def main():
                 min_num_qubits=qc.num_qubits
             )
             print(f"🚀 Using REAL IBM hardware: {backend.name} ({backend.num_qubits} qubits)")
-        else:
-            backend = AerSimulator()
-            print(f"📡 Backend: {backend.name if hasattr(backend, 'name') else str(backend)}")
-
-        # NOTE: routing_method="sabre" — matches reference code exactly
-        pm     = generate_preset_pass_manager(
+            # routing_method="sabre" is valid ONLY for real IBM hardware backends
+            pm = generate_preset_pass_manager(
                      optimization_level=3,
                      backend=backend,
                      routing_method="sabre")
+            # Use qiskit_ibm_runtime SamplerV2 for real hardware
+            sampler = Sampler(mode=backend)
+            # DD — XY4.  INCOMPATIBLE with dynamic circuits (if_test mid-circuit measure).
+            # Only safe for non-dynamic builds: mode 29, pure Regev.
+            USE_DD = input("Enable Dynamical Decoupling XY4? [y/N] → ").lower() == "y"
+            if USE_DD:
+                sampler.options.dynamical_decoupling.enable        = True
+                sampler.options.dynamical_decoupling.sequence_type = "XY4"
+        else:
+            # AerSimulator path — Aer's own SamplerV2, no routing_method kwarg
+            from qiskit_aer.primitives import SamplerV2 as AerSampler
+            backend = AerSimulator()
+            print(f"📡 Backend (Aer local sim): {backend.name if hasattr(backend, 'name') else str(backend)}")
+            # AerSimulator does NOT accept routing_method — omit it
+            pm      = generate_preset_pass_manager(
+                          optimization_level=3,
+                          backend=backend)
+            # qiskit_ibm_runtime.SamplerV2 does NOT wrap AerSimulator — use Aer's own
+            sampler = AerSampler()
+            USE_DD  = False   # DD is meaningless on a local simulator
+
         isa_qc = pm.run(qc)
         print(f"Transpiled depth: {isa_qc.depth()}")
         print(f"Transpiled size : {isa_qc.size()}")
         print(f"Shots: {shots}")
 
-        sampler = Sampler(mode=backend)
         # NOTE: shots go ONLY in sampler.run() — NOT in sampler.options.default_shots.
         # Setting default_shots alongside run(shots=) causes conflicts on real hardware.
 
-        # DD — XY4.  IMPORTANT: dynamic circuits (if_test mid-circuit measure) are
-        # INCOMPATIBLE with DD on real IBM hardware.  Only enable DD for non-dynamic
-        # builds (mode 29 / mode 27 without if_test, or pure Regev).
-        USE_DD = input("Enable Dynamical Decoupling XY4? [y/N] → ").lower() == "y"
-        if USE_DD:
-            sampler.options.dynamical_decoupling.enable        = True
-            sampler.options.dynamical_decoupling.sequence_type = "XY4"
-
-        # ZNE — manual 4-scale
+        # ZNE — manual 4-scale (works on both real hardware and Aer)
         USE_ZNE = input("Enable manual 4-scale ZNE? [y/N] → ").lower() == "y"
         if USE_ZNE:
             print("ℹ️  ZNE: manual 4-scale post-job extrapolation will be applied.")
 
         print(f"📡 Submitting job | Shots: {shots}")
         job = sampler.run([isa_qc], shots=shots)
-        print(f"Job ID: {job.job_id()}")
-        print("⏳ Waiting for results from quantum hardware...")
+        # job_id() exists on IBM Runtime jobs; Aer PrimitiveJob may not have it
+        try:
+            print(f"Job ID: {job.job_id()}")
+        except Exception:
+            print("Job ID: (local Aer job — no remote ID)")
+        print("⏳ Waiting for results...")
 
         result     = job.result()
         pub_result = result[0]
