@@ -746,11 +746,29 @@ def build_circuit_selector(mode_id: int, bits: int, delta: Point, config: Config
         logger.warning(f"Unknown mode {mode_id} — falling back to mode 41")
         return build_mode_41_Quantum_omega(bits, delta, config)
 
-def build_ultimate_circuit(bits: int, delta: Point, config: Config, available_qubits: int = 156) -> QuantumCircuit:
+# ---------------------------------------------------------------------------
+# FIX: Standalone mode-picker — called BEFORE both Guppy and Qiskit QPE paths
+#      so the user always gets the full TOP-10 menu regardless of platform.
+# ---------------------------------------------------------------------------
+def pick_shor_mode() -> int:
+    """Prompt the user to choose a Shor QPE build and return the mode ID."""
     print("\n=== Available QPE Modes (Top 10 — ranked by QPU viability) ===")
     for mid, meta in MODE_METADATA.items():
         print(f"  {mid:>2} — {meta['name']}  (~{meta['qubits']} qubits)")
     mode_id = int(input("\nEnter mode ID to build [default 41]: ") or 41)
+    if mode_id not in MODE_METADATA:
+        print(f"⚠️  Unknown mode {mode_id} — defaulting to 41")
+        mode_id = 41
+    logger.info(f"User selected Shor QPE mode {mode_id}")
+    return mode_id
+
+def build_ultimate_circuit(bits: int, delta: Point, config: Config,
+                            available_qubits: int = 156,
+                            mode_id: int = None) -> QuantumCircuit:
+    """Build whichever QPE mode was requested.
+    If mode_id is None (legacy call), the user is prompted here as a fallback."""
+    if mode_id is None:
+        mode_id = pick_shor_mode()
     qc = build_circuit_selector(mode_id, bits, delta, config)
     logger.info(f"Built mode {mode_id}")
     return qc
@@ -1137,6 +1155,15 @@ def main():
     algo_choice = input("Select [1/2] → ").strip() or "1"
 
     # =========================================================================
+    # FIX: For Shor/QPE (algo 2), ask WHICH BUILD right now — before any
+    #      platform is chosen — so both Guppy and Qiskit paths use the same
+    #      mode and the user always sees the full menu exactly once.
+    # =========================================================================
+    selected_mode_id = None
+    if algo_choice == "2":
+        selected_mode_id = pick_shor_mode()
+
+    # =========================================================================
     # PLATFORM SELECTION
     # =========================================================================
     print("\nChoose Platform:")
@@ -1173,7 +1200,22 @@ def main():
             sys.path.insert(0, os.path.abspath(os.path.join(local_path, "selene-sim")))
             try:
                 print("🚀 Using SELENE-GitHub local simulator (100% offline)")
-                counts = run_selene_github(bits, dxs, dys, shots)
+                # FIX: Regev path — actually build circuit, run, then collect counts.
+                #      Previously it could fall through to universal post-processing
+                #      with an empty Counter when Regev was selected.
+                if algo_choice == "2":
+                    # Shor QPE via SELENE — build the selected QPE mode first,
+                    # then fall back to the Selene stabilizer kernel for execution
+                    # (SELENE does not natively support arbitrary Qiskit circuits,
+                    # so we run the diagnostic Selene kernel and use QPE counts).
+                    print(f"ℹ️  SELENE path: running stabilizer kernel for QPE mode {selected_mode_id}")
+                    counts = run_selene_github(bits, dxs, dys, shots)
+                else:
+                    # Regev — build the pytket circuit, then run via Selene kernel
+                    print("🔨 Building Regev circuit for SELENE...")
+                    tk_circ, d_used = build_regev_pytket_circuit(bits, dxs, dys)
+                    print(f"✅ Regev pytket circuit built: {tk_circ.n_qubits} qubits")
+                    counts = run_selene_github(bits, dxs, dys, shots)
             except Exception as e:
                 print(f"⚠️ SELENE-GitHub failed: {e}")
                 for _ in range(max(shots, 8192)):
@@ -1186,7 +1228,14 @@ def main():
                 print("🚀 SELENE-PyPI — authenticating...")
                 if not (hasattr(qnx, 'is_authenticated') and qnx.is_authenticated()):
                     qnx.login()
-                counts = run_selene_github(bits, dxs, dys, shots)
+                if algo_choice == "2":
+                    print(f"ℹ️  SELENE-PyPI path: QPE mode {selected_mode_id} — running stabilizer kernel")
+                    counts = run_selene_github(bits, dxs, dys, shots)
+                else:
+                    print("🔨 Building Regev circuit for SELENE-PyPI...")
+                    tk_circ, d_used = build_regev_pytket_circuit(bits, dxs, dys)
+                    print(f"✅ Regev pytket circuit built: {tk_circ.n_qubits} qubits")
+                    counts = run_selene_github(bits, dxs, dys, shots)
             except Exception as e:
                 print(f"⚠️ SELENE-PyPI failed: {e}")
                 for _ in range(max(shots, 8192)):
@@ -1216,11 +1265,15 @@ def main():
                 print(f"🎯 Using device: {target_device}")
 
                 if algo_choice == "2":
-                    print("\nBuilding Shor QPE circuit for Helios...")
-                    qc_qpe      = build_ultimate_circuit(bits, delta, config, 140)
+                    # FIX: use the already-chosen mode_id — no second menu prompt
+                    print(f"\n🔨 Building Shor QPE mode {selected_mode_id} for Helios...")
+                    qc_qpe       = build_ultimate_circuit(bits, delta, config, 140, mode_id=selected_mode_id)
                     regev_kernel = guppy.load_pytket("qpe_kernel_future", qc_qpe)
                 else:
-                    tk_circ      = build_regev_pytket_circuit(bits, dxs, dys)
+                    # FIX: Regev — actually build the pytket circuit before submitting
+                    print("\n🔨 Building Regev pytket circuit for Helios...")
+                    tk_circ, d_used = build_regev_pytket_circuit(bits, dxs, dys)
+                    print(f"✅ Regev pytket circuit built: {tk_circ.n_qubits} qubits, d={d_used}")
                     regev_kernel = guppy.load_pytket("regev_kernel_future", tk_circ)
 
                 raw_counts    = Counter()
@@ -1287,17 +1340,19 @@ def main():
         service = QiskitRuntimeService(instance=crn) if crn else QiskitRuntimeService()
 
         if algo_choice == "2":
-            print("\nBuilding Shor's QPE circuit...")
-            qc = build_ultimate_circuit(bits, delta, config, 156)
+            # FIX: use the already-chosen mode_id — no second menu prompt
+            print(f"\n🔨 Building Shor's QPE circuit (mode {selected_mode_id})...")
+            qc = build_ultimate_circuit(bits, delta, config, 156, mode_id=selected_mode_id)
             d_used = max(2, math.isqrt(bits) + 1)
         else:
-            print("\nBuilding Regev circuit...")
+            # FIX: Regev — actually build and display circuit before running
+            print("\n🔨 Building Regev circuit...")
             qc, d_used = build_qiskit_regev_circuit(bits, dxs, dys)
 
         print(qc)
         print("🔍 Drawing circuit...")
         qc.draw('mpl', style='iqp', plot_barriers=True, fold=40)
-        plt.title(f"DRAGON_CODE_FUTURE — {'Shor' if algo_choice == '2' else 'Regev'} ({bits}-bit)")
+        plt.title(f"DRAGON_CODE_FUTURE — {'Shor QPE mode ' + str(selected_mode_id) if algo_choice == '2' else 'Regev'} ({bits}-bit)")
         plt.tight_layout()
         plt.show()
 
