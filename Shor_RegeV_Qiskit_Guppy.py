@@ -1,13 +1,13 @@
-# Hi i-Realy Apperciated you get me A Donation here_ 1Bu4CR8Bi5AXQG8pnu1avny88C5CCgWKfb /////
-# ===========================================================================================
-# 🔥🐉 DRAGON_CODE_FUTURE — ULTIMATE QUANTUM ECDLP SOLVER (v155) — QISKIT REAL HARDWARE ONLY
+# Hi i-Realy Apperciated you get me A Donation here_ 1Bu4CR8Bi5AXQG8pnu1avny88C5CCgWKfb ///// 1NEJcwfcEm7Aax8oJNjRUnY3hEavCjNrai
+# =============================================================================================#
+#                               ———————————————————————                                      |_
+# 🔥🐉 DRAGON_CODE_FUTURE — ULTIMATE QUANTUM ECDLP SOLVER (v155) — QISKIT REAL HARDWARE 🔥🐉 |_
 # ===========================================================================================#
 #
-# ===========================================================================================
 # COMBINES:
 # - BASIC : Pure Shor's style, geometric QPE, universal post-processing
 # - EXTRA : Regev, fault-tolerance, full range, modern Qiskit API
-# ===========================================================================================
+# ===========================================================================================###
 #
 # FEATURES:
 # - Multi-dimensional Regev algorithm (d ≈ √bits)
@@ -18,9 +18,10 @@
 # - All fault-tolerance methods (Flags, Cat, Erasure, Surface, Repetition, DD)
 # - Optimized for IBM Quantum (156+ qubit hardware)
 # - Automatic SABRE routing + XY4 dynamical decoupling
+# - Pauli Twirling (replaces manual ZNE)
 # - 16-bit default with all Bitcoin Puzzle Presets.
 #
-# ===========================================================================================
+# ===========================================================================================#
 
 import os
 import sys
@@ -100,7 +101,7 @@ SMALL_PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47]
 PRESETS = {
     "16":  {"bits": 16,  "start": 0x8000,
             "pub": "03ccb5e3ad4abc7900ebfbd81621e31ec2b17b346090e741921a91bf9cadf934c5",
-            "shots": 16384},
+            "shots": 32768},
     "21":  {"bits": 21,  "start": 0x90000,
             "pub": "037d14b19a95fe400b88b0debe31ecc3c0ec94daea90d13057bde89c5f8e6fc25c",
             "shots": 32768},
@@ -122,7 +123,6 @@ class Config:
         self.COMPRESSED_PUBKEY_HEX = compressed_pubkey_hex
         self.KEYSPACE_START = keyspace_start
         self.USE_FLAGS      = True
-        self.USE_ZNE        = False
         self.USE_DD         = False  # Disabled due to dynamic circuits
 
 MODE_METADATA = {
@@ -1217,7 +1217,7 @@ def main():
                     counts = run_selene_github(bits, dxs, dys, shots)
             except Exception as e:
                 print(f"⚠️ SELENE-GitHub failed: {e}")
-                for _ in range(max(shots, 8192)):
+                for _ in range(max(shots, 16384)):
                     fake = np.random.randint(0, 1 << bits)
                     counts[bin(fake)[2:].zfill(bits)] += 1
 
@@ -1237,7 +1237,7 @@ def main():
                     counts = run_selene_github(bits, dxs, dys, shots)
             except Exception as e:
                 print(f"⚠️ SELENE-PyPI failed: {e}")
-                for _ in range(max(shots, 8192)):
+                for _ in range(max(shots, 16384)):
                     fake = np.random.randint(0, 1 << bits)
                     counts[bin(fake)[2:].zfill(bits)] += 1
 
@@ -1319,8 +1319,9 @@ def main():
                     fake = np.random.randint(0, 1 << bits)
                     counts[bin(fake)[2:].zfill(bits)] += 1
 
+
     # =========================================================================
-    # QISKIT PATH (token/service/DD/ZNE unchanged from v150)
+    # QISKIT PATH — VERSION-1 STYLE (Twirling + XY4 warning, no auto-disable, no ZNE)
     # =========================================================================
     if BACKEND_MODE == "QISKIT":
         print("\n=== IBM Quantum Real Hardware Setup ===")
@@ -1351,6 +1352,7 @@ def main():
 
         print("🔍 Drawing circuit...")
         print(qc)
+        print("🔍 Drawing circuit...")
         qc.draw('mpl', style='iqp', plot_barriers=True, fold=40)
         plt.title(f"DRAGON_CODE_FUTURE — {'Shor QPE mode ' + str(selected_mode_id) if algo_choice == '2' else 'Regev'} ({bits}-bit)")
         plt.tight_layout()
@@ -1371,12 +1373,25 @@ def main():
                      routing_method="sabre")
             # Use qiskit_ibm_runtime SamplerV2 for real hardware
             sampler = Sampler(mode=backend)
-            # DD — XY4.  INCOMPATIBLE with dynamic circuits (if_test mid-circuit measure).
-            # Only safe for non-dynamic builds: mode 29, pure Regev.
-            USE_DD = input("Enable Dynamical Decoupling XY4? [y/N] → ").lower() == "y"
+
+            # === WARNING + USER CHOICE (no auto-disable) ===
+            print("\n⚠️  WARNING: XY4 Dynamical Decoupling should be disabled for dynamic circuits")
+            print("   (QPE modes with if_test). It only works reliably on static circuits (Regev or mode 29).")
+            print("   You can still try to enable it — IBM will raise an error if the circuit is dynamic.")
+            USE_DD = input("Enable Dynamical Decoupling XY4 anyway? [y/N] → ").lower() == "y"
             if USE_DD:
                 sampler.options.dynamical_decoupling.enable        = True
                 sampler.options.dynamical_decoupling.sequence_type = "XY4"
+                print("✅ XY4 Dynamical Decoupling ENABLED (user choice)")
+
+            # === Pauli Twirling (always safe) ===
+            USE_TWIRL = input("Enable Pauli Twirling? [y/N] → ").lower() == "y"
+            if USE_TWIRL:
+                sampler.options.twirling.enable_gates   = True
+                sampler.options.twirling.enable_measure = True
+                sampler.options.twirling.strategy       = "active-accum"
+                print("✅ Pauli Twirling enabled")
+
         else:
             # AerSimulator path — Aer's own SamplerV2, no routing_method kwarg
             from qiskit_aer.primitives import SamplerV2 as AerSampler
@@ -1388,7 +1403,10 @@ def main():
                           backend=backend)
             # qiskit_ibm_runtime.SamplerV2 does NOT wrap AerSimulator — use Aer's own
             sampler = AerSampler()
-            USE_DD  = False   # DD is meaningless on a local simulator
+            # As requested: DD and Twirling forced OFF for AerSimulator
+            USE_DD    = False
+            USE_TWIRL = False
+            print("DD and Twirling disabled for AerSimulator")
 
         isa_qc = pm.run(qc)
         print(f"Transpiled depth: {isa_qc.depth()}")
@@ -1396,12 +1414,6 @@ def main():
         print(f"Shots: {shots}")
 
         # NOTE: shots go ONLY in sampler.run() — NOT in sampler.options.default_shots.
-        # Setting default_shots alongside run(shots=) causes conflicts on real hardware.
-
-        # ZNE — manual 4-scale (works on both real hardware and Aer)
-        USE_ZNE = input("Enable manual 4-scale ZNE? [y/N] → ").lower() == "y"
-        if USE_ZNE:
-            print("ℹ️  ZNE: manual 4-scale post-job extrapolation will be applied.")
 
         print(f"📡 Submitting job | Shots: {shots}")
         job = sampler.run([isa_qc], shots=shots)
@@ -1450,39 +1462,6 @@ def main():
                     print(f"   Collected from register: {attr_name}")
 
         print(f"📊 Received {len(counts)} unique measurements")
-
-        # --- ZNE multi-register collection (same pattern as above) ---
-        if USE_ZNE:
-            print("🔬 Applying manual 4-scale ZNE...")
-
-            def _collect_counts(res_item) -> Counter:
-                """Collect from all classical registers on a single result item."""
-                c = Counter()
-                for aname in dir(res_item.data):
-                    if aname.startswith('_'):
-                        continue
-                    attr = getattr(res_item.data, aname, None)
-                    if attr is not None and hasattr(attr, 'get_counts'):
-                        rc = attr.get_counts()
-                        if rc:
-                            c.update(rc)
-                return c
-
-            zne_list = [counts]
-            for nf in [3, 5, 7]:
-                sc      = max(1024, shots // nf)
-                jz      = sampler.run([isa_qc], shots=sc)
-                rz      = jz.result()
-                zne_combined = _collect_counts(rz[0])
-                zne_list.append(zne_combined)
-
-            extrapolated = defaultdict(int)
-            for bitstr in zne_list[0]:
-                vals = [c.get(bitstr, 0) for c in zne_list]
-                fit  = np.polyfit([1, 3, 5, 7], vals, 1)
-                extrapolated[bitstr] = max(0, int(fit[1]))
-            counts = Counter(extrapolated)
-            print("✅ Manual ZNE applied")
 
         print(f"\n📊 {len(counts)} unique outcomes")
         for bs, cnt in counts.most_common(50):
