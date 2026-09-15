@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quantum Resource Analysis - 140-bit Cryptographic Puzzle</title>
+<style>
+body { font-family: "Segoe UI", Arial, sans-serif; background: #0a0a0a; color: #e0e0e0; margin: 0; padding: 20px; }
+h1 { color: #00ff88; text-align: center; border-bottom: 2px solid #00ff88; padding-bottom: 10px; }
+h2 { color: #ffaa00; margin-top: 30px; }
+.hardware-box { background: #1a1a2e; border: 1px solid #333; border-radius: 8px; padding: 15px; margin: 20px 0; }
+.hardware-box code { color: #00ff88; font-size: 1.1em; }
+table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.9em; }
+th { background: #1a1a2e; color: #00ff88; padding: 10px; text-align: left; border-bottom: 2px solid #00ff88; }
+td { padding: 8px 10px; border-bottom: 1px solid #333; }
+tr:nth-child(even) { background: #111; }
+tr:hover { background: #1a1a2e; }
+.yes { color: #00ff88; font-weight: bold; }
+.no { color: #ff4444; font-weight: bold; }
+.maybe { color: #ffaa00; font-weight: bold; }
+.rank-1 { border-left: 4px solid #00ff88; }
+.rank-2 { border-left: 4px solid #88ff00; }
+.rank-3 { border-left: 4px solid #aaff00; }
+.score-high { color: #00ff88; }
+.score-med { color: #ffaa00; }
+.score-low { color: #ff4444; }
+.notes { font-size: 0.85em; color: #aaa; max-width: 400px; }
+.footer { text-align: center; margin-top: 40px; color: #666; font-size: 0.85em; }
+</style>
+</head>
+<body>
+<h1>Quantum Resource Analysis</h1>
+<h2 style="text-align:center;">140-bit Cryptographic Puzzle | 20,000 Physical Qubits</h2>
+
+<div class="hardware-box">
+<strong>Hardware Assumption:</strong> Fault-tolerant trapped-ion quantum computer<br>
+<code>Physical Qubits: 20,000</code> | <code>Logical Qubits: 1,500</code> | <code>Overhead: ~13.33x</code><br>
+<strong>Target:</strong> 140-bit Discrete Logarithm Problem (ECDLP or F_p* DLP)
+</div>
+
+<h2>Ranking Table: Top Quantum Attack Methods</h2>
+<table>
+<tr>
+<th>Rank</th>
+<th>Method</th>
+<th>Type</th>
+<th>Logical Qubits</th>
+<th>Physical Qubits</th>
+<th>Toffoli Gates</th>
+<th>Runs</th>
+<th>Runtime</th>
+<th>Fits?</th>
+<th>Score</th>
+<th>Notes</th>
+</tr>
+<tr class="rank-1">
+<td><b>#1</b></td>
+<td>Jo & Lee 2026 (Space-Efficient ECDLP)</td>
+<td>Shor-variant</td>
+<td>350</td>
+<td>4.7k</td>
+<td>14.94M</td>
+<td>1</td>
+<td>~6-12 hours</td>
+<td class="yes">YES</td>
+<td class="score-high">95/100</td>
+<td class="notes">BEST overall. Exact. 5n/2 qubits. Near-quadratic gates. Measurement-based uncomputation.</td>
+</tr>
+<tr class="rank-2">
+<td><b>#2</b></td>
+<td>Ekera-Gärtner Regev DLP (d=12 runs)</td>
+<td>Regev-variant</td>
+<td>188</td>
+<td>2.5k</td>
+<td>944.8k</td>
+<td>12</td>
+<td>~4-8 hours total</td>
+<td class="yes">YES</td>
+<td class="score-high">92/100</td>
+<td class="notes">BEST for F_p* DLP. Tiny per-run footprint. d=12 independent sequential runs.</td>
+</tr>
+<tr class="rank-3">
+<td><b>#3</b></td>
+<td>Ragavan-Vaikuntanathan 2025 (Space-Efficient Regev, 12 runs)</td>
+<td>Regev-variant</td>
+<td>280</td>
+<td>3.7k</td>
+<td>2.36M</td>
+<td>12</td>
+<td>~8-16 hours total</td>
+<td class="yes">YES</td>
+<td class="score-high">88/100</td>
+<td class="notes">Error-tolerant post-processing. O(n) space + O(n^1.5) gates. Best of Shor+Regev.</td>
+</tr>
+<tr class="">
+<td><b>#4</b></td>
+<td>Chevignard et al. 2026 (Compressed Shor, 22 runs)</td>
+<td>Shor-variant</td>
+<td>436</td>
+<td>5.8k</td>
+<td>48.50B</td>
+<td>22</td>
+<td>~2-4 days total</td>
+<td class="yes">YES</td>
+<td class="score-high">82/100</td>
+<td class="notes">Lowest qubit count! But HEURISTIC. O(n^4) gates. RNS + Legendre symbol compression.</td>
+</tr>
+<tr class="">
+<td><b>#5</b></td>
+<td>IonQ Walking Cat (Häner et al. 2026)</td>
+<td>Shor-variant</td>
+<td>796</td>
+<td>10.6k</td>
+<td>6.38M</td>
+<td>1</td>
+<td>~10-15 days</td>
+<td class="yes">YES</td>
+<td class="score-high">85/100</td>
+<td class="notes">Full end-to-end architecture. 63% success prob. CCZ factory. LDPC codes. Proven design.</td>
+</tr>
+<tr class="">
+<td><b>#6</b></td>
+<td>Häner et al. 2020 (Improved Shor ECDLP)</td>
+<td>Shor-variant</td>
+<td>1161</td>
+<td>15.5k</td>
+<td>305.77M</td>
+<td>1</td>
+<td>~15-25 days</td>
+<td class="yes">YES</td>
+<td class="score-med">70/100</td>
+<td class="notes">Superseded by 2026 works. Still fits. Higher qubit count than modern methods.</td>
+</tr>
+<tr class="">
+<td><b>#7</b></td>
+<td>Roetteler et al. 2017 (Microsoft Research)</td>
+<td>Shor-variant</td>
+<td>1286</td>
+<td>17.1k</td>
+<td>19.99B</td>
+<td>1</td>
+<td>~20-30 days</td>
+<td class="yes">YES</td>
+<td class="score-med">60/100</td>
+<td class="notes">First rigorous estimate. 9n qubits. High gate count. Historical baseline.</td>
+</tr>
+<tr class="">
+<td><b>#8</b></td>
+<td>Regev Original DLP (O(n^1.5) space, 12 runs)</td>
+<td>Regev-variant</td>
+<td>1656</td>
+<td>22.1k</td>
+<td>5.90M</td>
+<td>12</td>
+<td>N/A (does not fit)</td>
+<td class="no">NO</td>
+<td class="score-low">30/100</td>
+<td class="notes">EXCEEDS your hardware! Needs ~22k physical qubits. Space-inefficient. Use RV2025 instead.</td>
+</tr>
+<tr class="">
+<td><b>#9</b></td>
+<td>Grover + BSGS Hybrid (meet-in-the-middle)</td>
+<td>Grover-variant</td>
+<td>70</td>
+<td>933</td>
+<td>34359.74B</td>
+<td>1</td>
+<td>~2^35 iterations (IMPRACTICAL)</td>
+<td class="yes">YES</td>
+<td class="score-low">20/100</td>
+<td class="notes">Fits in hardware but needs ~34 BILLION quantum steps. Not viable.</td>
+</tr>
+<tr class="">
+<td><b>#10</b></td>
+<td>Grover Brute Force (140-bit search)</td>
+<td>Grover-variant</td>
+<td>140</td>
+<td>1.9k</td>
+<td>1180591620717411.25B</td>
+<td>1</td>
+<td>~2^70 iterations (IMPOSSIBLE)</td>
+<td class="yes">YES</td>
+<td class="score-low">5/100</td>
+<td class="notes">Fits in hardware but needs ~1 TRILLION times more steps than age of universe.</td>
+</tr>
+<tr class="">
+<td><b>#11</b></td>
+<td>HECC Genus-2 (Ekera-Gärtner heuristic)</td>
+<td>HECC</td>
+<td>???</td>
+<td>???</td>
+<td>???</td>
+<td>d~12 (heuristic)</td>
+<td>UNKNOWN</td>
+<td class="maybe">UNKNOWN</td>
+<td class="score-low">0/100</td>
+<td class="notes">OPEN PROBLEM. Reversible Jacobian group-law circuits do not yet exist.</td>
+</tr>
+</table>
+
+<h2>Top 3 Recommendations</h2>
+<div class="hardware-box rank-1">
+<b style="color:#00ff88;">#1 BEST OVERALL: Jo & Lee 2026 (Space-Efficient ECDLP)</b><br>
+- Logical: 350 qubits | Physical: ~4,666 qubits | Toffoli: ~15M<br>
+- Single run, exact construction, near-quadratic gate count<br>
+- Uses measurement-based uncomputation for workspace recycling<br>
+- <b>Why #1:</b> Best time-space tradeoff. Exact (no heuristics). Fits comfortably in 20k physical qubits.
+</div>
+
+<div class="hardware-box rank-2">
+<b style="color:#88ff00;">#2 BEST FOR F_p*: Ekera-Gärtner Regev DLP (d=12 runs)</b><br>
+- Logical: 188 qubits per run | Physical: ~2,506 per run | Toffoli: ~945k per run<br>
+- 12 independent sequential runs, classical lattice post-processing<br>
+- <b>Why #2:</b> Smallest per-run footprint. Parallelizable across time. Best for multiplicative group DLP.
+</div>
+
+<div class="hardware-box rank-3">
+<b style="color:#aaff00;">#3 BEST ERROR-TOLERANT: Ragavan-Vaikuntanathan 2025</b><br>
+- Logical: 280 qubits | Physical: ~3,733 qubits | Toffoli: ~2.4M per run<br>
+- Tolerates corrupted quantum runs via lattice error detection<br>
+- <b>Why #3:</b> Most robust to noise. O(n) space + O(n^1.5) gates. Error-tolerant classical post-processing.
+</div>
+
+<h2>Methods That DO NOT Fit in 20,000 Physical Qubits</h2>
+<div class="hardware-box">
+<b style="color:#ff4444;">Regev Original DLP (O(n^1.5) space)</b><br>
+- Logical: 1,656 qubits | Physical needed: ~22,080 qubits<br>
+- EXCEEDS your hardware by ~2,000+ physical qubits<br>
+- <b>Workaround:</b> Use Ragavan-Vaikuntanathan 2025 instead (same algorithm family, O(n) space)
+</div>
+
+<h2>Methods That Fit But Are Impractical</h2>
+<div class="hardware-box">
+<b>Grover + BSGS Hybrid:</b> Fits (70 logical / 933 physical) but needs ~34 billion quantum steps.<br>
+<b>Grover Brute Force:</b> Fits (140 logical / 1,866 physical) but needs ~2^70 steps (impossible).<br>
+<b>Conclusion:</b> Grover variants are NOT viable for 140-bit puzzles even with fault-tolerant hardware.
+</div>
+
+<h2>Key Insights</h2>
+<div class="hardware-box">
+1. <b>Shor variants dominate:</b> All top-ranked methods are Shor or Regev-Shor hybrids. Grover is irrelevant at this scale.<br>
+2. <b>Space is the bottleneck:</b> Even with 20,000 physical qubits, only ~1,500 logical qubits are available. Methods needing >1,500 logical qubits fail.<br>
+3. <b>Parallel runs are your friend:</b> Ekera-Gärtner and Regev-style methods split work into d~sqrt(n) small runs. Each run is tiny; total time is manageable.<br>
+4. <b>HECC Genus-2 is still open:</b> No reversible Jacobian group-law circuits exist yet. Cannot estimate resources.<br>
+5. <b>140-bit is within reach:</b> With 20,000 physical qubits and fault-tolerant error correction, a 140-bit ECDLP puzzle is solvable in hours to days using 2026-era algorithms.
+</div>
+
+<div class="footer">
+Generated by FUGU ULTIMATE QUANTUM SOLVER FINAL v3.0.0 | 2026-09-16<br>
+Sources: Roetteler et al. 2017, Häner et al. 2020, Ekera-Gärtner PQCrypto 2024, Ragavan-Vaikuntanathan 2025,<br>
+Chevignard et al. 2026, Jo & Lee 2026, Häner et al. 2026 (IonQ Walking Cat), Regev JACM 2025
+</div>
+</body>
+</html>
